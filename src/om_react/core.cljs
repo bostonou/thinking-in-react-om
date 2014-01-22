@@ -17,7 +17,10 @@
     om/IRender
     (render [obj]
       (dom/tr nil
-              (dom/td nil (:name product))
+              (if (:stocked product)
+                (dom/td nil (:name product))
+                (dom/td nil
+                        (dom/span #js {:style #js {:color "red"}} (:name product))))
               (dom/td nil (:price product))))))
 
 (defn product-category-row
@@ -27,6 +30,27 @@
     (render [obj]
       (dom/tr nil
               (dom/th #js {:colSpan 2} (:category product))))))
+
+(defn build-product-rows
+  [products]
+  (into-array
+   (loop [products products
+          last-category nil
+          idx 0
+          acc []]
+     (if-let [{:keys [category price stocked name] :as product} (first products)]
+       (if-not (= category last-category)
+         (recur (rest products)
+                category
+                (inc (inc idx))
+                (conj acc
+                      (om/build product-category-row product {:om.core/index idx})
+                      (om/build product-row product {:om.core/index (inc idx)})))
+         (recur (rest products)
+                category
+                (inc idx)
+                (conj acc (om/build product-row product {:om.core/index idx}))))
+       acc))))
 
 (defn product-table
   [products owner]
@@ -38,8 +62,7 @@
                             (dom/tr nil
                                     (dom/th nil "Name")
                                     (dom/th nil "Price")))
-                 (dom/tbody nil
-                            (om/build-all product-row products))))))
+                 (dom/tbody nil (build-product-rows products))))))
 
 (defn filterable-product-table
   [products owner]
