@@ -3,7 +3,7 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [clojure.string :as str]
-            [cljs.core.async :refer [<! chan put!]]))
+            [cljs.core.async :refer [<! chan put! sliding-buffer]]))
 
 (enable-console-print!)
 
@@ -104,7 +104,7 @@
   (reify
     om/IInitState
     (init-state [_]
-      {:channel (chan)})
+      {:channel (chan (sliding-buffer 1))})
     om/IRenderState
     (render-state [_ {:keys [channel]}]
       (dom/div nil
