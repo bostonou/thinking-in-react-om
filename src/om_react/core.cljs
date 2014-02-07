@@ -1,9 +1,9 @@
 (ns om-react.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
             [clojure.string :as str]
-            [cljs.core.async :refer [<! chan put! sliding-buffer]]))
+            [cljs.core.async :refer [<! chan put! sliding-buffer]]
+            [sablono.core :as html :refer-macros [html]]))
 
 (enable-console-print!)
 
@@ -17,18 +17,18 @@
 (defn product-row
   [product owner]
   (om/component
-   (dom/tr nil
-           (if (:stocked product)
-             (dom/td nil (:name product))
-             (dom/td nil
-                     (dom/span #js {:style #js {:color "red"}} (:name product))))
-           (dom/td nil (:price product)))))
+   (html
+    [:tr
+     (if (:stocked product)
+       [:td (:name product)]
+       [:td [:span {:style {:color "red"}} (:name product)]])
+     [:td (:price product)]])))
 
 (defn product-category-row
   [product owner]
   (om/component
-   (dom/tr nil
-           (dom/th #js {:colSpan 2} (:category product)))))
+   (html [:tr
+          [:td {:colSpan 2} (:category product)]])))
 
 (defn build-product-rows
   [products]
@@ -79,25 +79,25 @@
     om/IRenderState
     (render-state [_ {:keys [filter-text in-stock-only]}]
       (let [filtered (filter-products filter-text in-stock-only products)]
-        (dom/table nil
-                   (dom/thead nil
-                              (dom/tr nil
-                                      (dom/th nil "Name")
-                                      (dom/th nil "Price")))
-                   (dom/tbody nil (build-product-rows filtered)))))))
+        (html [:table
+               [:thead
+                [:tr [:th "Name"] [:th "Price"]]]
+               [:tbody (build-product-rows filtered)]])))))
 
 (defn search-bar
   [cursor owner]
   (reify
     om/IRenderState
     (render-state [_ {:keys [channel]}]
-      (dom/form nil
-                (dom/input #js {:type "text" :placeholder "Search..."
-                                :onChange #(put! channel [:filter (.. % -target -value)])})
-                (dom/p nil
-                       (dom/input #js {:type "checkbox"
-                                       :onChange #(put! channel [:stock (.. % -target -checked)])})
-                       "Only show products in stock")))))
+      (html
+       [:form
+        [:input
+         {:type "text" :placeholder "Search..."
+          :onChange #(put! channel [:filter (.. % -target -value)])}]
+        [:p [:input
+             {:type "checkbox"
+              :onChange #(put! channel [:stock (.. % -target -checked)])}]
+         "Only show products in stock"]]))))
 
 (defn filterable-product-table
   [cursor owner]
@@ -107,8 +107,9 @@
       {:channel (chan (sliding-buffer 1))})
     om/IRenderState
     (render-state [_ {:keys [channel]}]
-      (dom/div nil
-               (om/build search-bar cursor {:init-state {:channel channel}})
-               (om/build product-table (:products cursor) {:init-state {:channel channel}})))))
+      (html
+       [:div
+        (om/build search-bar cursor {:init-state {:channel channel}})
+        (om/build product-table (:products cursor) {:init-state {:channel channel}})]))))
 
-(om/root app-state filterable-product-table (. js/document (getElementById "app")))
+(om/root app-state filterable-product-table js/document.body)
